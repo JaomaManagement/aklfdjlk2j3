@@ -1,0 +1,87 @@
+from airtable import Airtable
+from tkinter import Tk, Label, Button, messagebox, Toplevel
+import webbrowser
+import os
+from enum import Enum
+import sys
+
+class AccountType(Enum):
+    ONLYFANS = "onlyfans"
+    BOT = "bot"
+    FANSLY = "fansly"
+    PORNHUB = "porn"
+    PLAYBOY = "playboy"
+    OTHER = "other"
+    FANHOUSE = "FANHOUSE"
+    VENMO = "VENMO"
+    CASH_APP = "CASH APP"
+    AGENCY = "agency"
+
+airtable = Airtable('appMg62URBMiVmNSp', 'tbl4iynkwyWpXNqcf', api_key='keyRSIVJFICrmdidk')
+records = airtable.get_all()
+print(f"Retrieved {len(records)} records from Airtable.")
+
+def open_url_in_edge(url):
+    print(f"Opening URL: {url}")
+    edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+    os.system(f'"{edge_path}" {url}')
+
+def delete_record(record):
+    print(f"Deleting record: {record['id']}")
+    airtable.delete(record['id'])
+
+def update_record(record, account_type):
+    print(f"Updating record {record['id']} with account type: {account_type}")
+    airtable.update(record['id'], {'Account Type': [account_type]})
+
+def ask_creator_question(record):
+    url = 'https://www.tiktok.com/@' + record['fields']['TikTok username']
+    open_url_in_edge(url)
+    
+    window = Tk()
+    
+    def yes_command():
+        print("Yes button clicked.")
+        window.destroy()
+        ask_account_type_question(record)
+    
+    def no_command():
+        print("No button clicked.")
+        delete_record(record)
+        window.destroy()
+        
+    def exit_command():
+        print("Exit button clicked.")
+        window.destroy()
+        sys.exit()  # This will stop the entire program
+        
+    Label(window, text="Does this account belong to a creator?").pack()
+    Button(window, text="Yes", command=yes_command, bg='green').pack()
+    Button(window, text="No", command=no_command, bg='red').pack()
+    Button(window, text="Exit", command=exit_command, bg='grey').pack()
+
+    window.mainloop()
+
+def ask_account_type_question(record):
+    window = Tk()
+
+    def account_type_command(account_type):
+        print(f"{account_type.value.capitalize()} button clicked.")
+        update_record(record, account_type.value)
+        window.destroy()
+    
+    Label(window, text="What type of account is this?").pack()
+    
+    for account_type in AccountType:
+        Button(window, text=account_type.value.capitalize(), command=lambda account_type=account_type: account_type_command(account_type)).pack()
+
+    Button(window, text="Exit", command=window.destroy, bg='grey').pack()
+
+    window.mainloop()
+
+for record in records:
+    if 'Account Type' in record['fields'] and record['fields']['Account Type']:
+        print(f"Skipping record {record['id']} because it already has an account type.")
+        continue
+    print(f"Asking creator question for record {record['id']}.")
+    ask_creator_question(record)
